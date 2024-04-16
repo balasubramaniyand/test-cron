@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Set the branch name to monitor for changes
+BRANCH_TO_MONITOR="your_branch_name"
+
+# Get the current commit hash for the branch
+CURRENT_BRANCH_COMMIT_HASH=$(git rev-parse HEAD "$BRANCH_TO_MONITOR")
+
+# Get the last recorded commit hash for the branch
+LAST_BRANCH_COMMIT_HASH=$(cat last_commit_hash_"$BRANCH_TO_MONITOR".txt 2>/dev/null)
+
+# Check if the last recorded commit hash exists and if it's different from the current commit hash
+if [ -n "$LAST_BRANCH_COMMIT_HASH" ] && [ "$CURRENT_BRANCH_COMMIT_HASH" != "$LAST_BRANCH_COMMIT_HASH" ]; then
+    echo "Changes detected in $BRANCH_TO_MONITOR. Running cron job..."
+
+    # Run the cron job
+    /path/to/cron_job.sh
+
+    # Record the current commit hash for future comparison
+    echo "$CURRENT_BRANCH_COMMIT_HASH" > last_commit_hash_"$BRANCH_TO_MONITOR".txt
+elif [ -z "$LAST_BRANCH_COMMIT_HASH" ]; then
+    # If the last recorded commit hash doesn't exist, record the current commit hash
+    echo "$CURRENT_BRANCH_COMMIT_HASH" > last_commit_hash_"$BRANCH_TO_MONITOR".txt
+fi
