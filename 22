@@ -1,0 +1,95 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'COMMIT_ID', description: 'Enter the specific commit ID to check (optional)')
+        choice (
+          choices:['main', 'devops'],
+          description: 'Build to build',
+          name : 'branch'
+        )
+        string(name: 'IP_ADDRESS', description: 'Target IP address')
+        choice (
+          choices:['balasubramaniyan.d', 'root'],
+          description: 'Username for SSH access',
+          name : 'USERNAME'
+        )
+    }
+
+    stages {
+        stage('Check Specific Commit ID (Optional)') {
+            when {
+                expression { return params.COMMIT_ID != null } // Only run if COMMIT_ID is provided
+            }
+            steps {
+                script {
+                    def desiredCommitId = params.COMMIT_ID
+                    echo "Checking for commit ID: ${desiredCommitId}"
+
+                    def currentCommitId = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Current Commit ID: ${currentCommitId}"
+
+                    if (desiredCommitId == currentCommitId) {
+                        echo "Commit ID matches! Continuing..."
+                    } else {
+                        echo "Commit ID mismatch. Skipping pipeline execution."
+                        error "Build failed: Commit ID mismatch." // Indicate failure
+                    }
+                }
+            }
+        }
+        stage('Clone') {
+            steps {
+                script {
+                    def gitResult = sh script: "git credentialsId: 'gitlab', url: 'https://pexgit.growipx.com/supportfirst/supportfirst-api-service.git', branch: \"${params.branch}\"", returnStatus: true
+                    if (gitResult != 0) {
+                        error 'Failed to clone Git repository!'
+                    }
+                }
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                script {
+                    def mvnHome = tool name: 'Maven', type: 'maven'
+                    sh "${mvnHome}/bin/mvn clean install"
+                }
+            }
+        }
+        stage('Filerename') {
+            steps {
+                script {
+                    def sshResult = sh script: "ssh -p 7774 ${params.USERNAME}@${params.IP_ADDRESS} 'cd /opt/supportfirst/test && sh -x test.sh'", returnStatus: true
+                    if (sshResult != 0) {
+                        error "Failed to execute script on remote server."
+                    }
+                }
+            }
+        }
+        stage('SCP File transfer') {
+            steps {
+                script {
+                    def warPath = "/var/lib/jenkins/workspace/testiopex/target/supportfirst-api-service-${env.BUILD_NUMBER}.war" // Use build number in WAR path
+                    def scpResult = sh script: "scp -T -P 7774 -o StrictHostKeyChecking=no ${warPath} ${params.USERNAME}@${params.IP_ADDRESS}:/opt/supportfirst/test", returnStatus: true
+                    if (scpResult != 0) {
+                        error "Failed to transfer WAR file using SCP."
+                    }
+                }
+            }
+        }
+        stage('SSH Connection') {
+            steps {
+                script {
+                    def sshResult = sh script: "ssh -p 7774 ${params.USERNAME}@${params.IP_ADDRESS} 'cd /opt/supportfirst/test && nohup java -jar supportfirst-api-service-${env.BUILD_NUMBER}.war'", returnStatus: true
+                    if (sshResult != 0) {
+                        error "Failed to start application on remote server."
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            mail bcc: '', body: """'Project: ${env.JOB_NAME}<br/> Build Number: ${env.BUILD_NUMBER}<br/> URL: ${env.BUILD_URL}'""", cc: '', from: '', replyTo: '', subject: '${currentBuild.result}', to: 'balasubramaniyan.d@iopex.com'
+        }
+    }
+}
