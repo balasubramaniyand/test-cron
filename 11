@@ -1,0 +1,27 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'COMMIT_ID', description: 'Enter the specific commit ID to check')
+    }
+
+    stages {
+        stage('Check Specific Commit ID') {
+            steps {
+                script {
+                    def desiredCommitId = params.COMMIT_ID
+                    echo "Checking for commit ID: ${desiredCommitId}"
+
+                    def currentCommitId = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                    echo "Current Commit ID: ${currentCommitId}"
+
+                    if (desiredCommitId == currentCommitId) {
+                        // Proceed with pipeline execution as desired
+                        echo "Commit ID matches! Continuing..."
+                    } else {
+                        echo "Commit ID mismatch. Skipping pipeline execution."
+                    }
+                }
+            }
+        }
+    }
+}
