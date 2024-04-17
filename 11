@@ -1,8 +1,24 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'COMMIT_ID', description: 'Enter the specific commit ID to check')
+        string(name: '46ed7a4a', description: 'Enter the specific commit ID to check')
     }
+    hoice (
+      choices:['main', 'devops'],
+      description: 'Build to build',
+      name : 'branch'
+    )
+    choice (
+      choices:['10.20.245.106', '10.20.245.99'],
+      description: 'Build to build',
+      name : 'IP_ADDRESS'
+    )
+    choice (
+      choices:['balasubramaniyan.d', 'root'],
+      description: 'Build to build',
+      name : 'USERNAME'
+    )
+  }
 
     stages {
         stage('Check Specific Commit ID') {
@@ -24,4 +40,45 @@ pipeline {
             }
         }
     }
-}
+
+stages {
+    stage('Clone') {
+      steps {
+        git credentialsId: 'gitlab', url: 'https://pexgit.growipx.com/supportfirst/supportfirst-api-service.git', branch: "${params.branch}"
+      }
+    }
+    stage('Maven Build') {
+      steps {
+        script {
+          def mvnHome = tool name: 'Maven', type: 'maven'
+          sh "${mvnHome}/bin/mvn clean install"
+        }
+      }
+    }
+    stage ('Filerename'){
+      steps{
+        sh "ssh -p 7774 ${params.USERNAME}@${params.IP_ADDRESS} 'cd /opt/supportfirst/test && sh -x test.sh'"
+      }
+    }
+    
+    stage('SCP File transfer'){
+      steps{
+        sh "scp -T -P 7774 -o StrictHostKeyChecking=no /var/lib/jenkins/workspace/testiopex/target/supportfirst-api-service-0.0.1.war ${params.USERNAME}@${params.IP_ADDRESS}:/opt/supportfirst/test"
+      }
+    }
+    stage ('SSH CONNCETION'){
+      steps{
+        sh "ssh -p 7774 ${params.USERNAME}@${params.IP_ADDRESS} 'cd /opt/supportfirst/test && nohup java -jar supportfirst-api-service-0.0.1.war'"
+      }
+    }
+    
+    }
+     post {
+         always {
+            //mail bcc: '', body: """'projcet: ${env.JOB_NAME}<br/> Build Number: ${env.BUILD_NUMBER}<br/> URL: ${env.BUILD_URL}'""", cc: '', from: '', replyTo: '', subject: '${currentBuild.result}', to: 'balasubramaniyan.d@iopex.com'
+             mail bcc: '', body: """'projcet: ${env.JOB_NAME}<br/> Build Number: ${env.BUILD_NUMBER}<br/> URL: ${env.BUILD_URL}'""", cc: '', from: '', replyTo: '', subject: 'Build Success', to: 'balasubramaniyan.d@iopex.com'
+             
+         }
+     }
+  
+  
