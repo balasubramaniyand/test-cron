@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+
+    triggers {
+        pollSCM('* * * * *') // Schedule to check for changes every minute
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout your repository
+                git branch: 'your-branch-name', url: 'https://gitlab.example.com/your/project.git'
+            }
+        }
+
+        stage('Check for New Changes') {
+            steps {
+                script {
+                    def lastCommit = readFile('last_commit_id.txt').trim()
+                    def latestCommit = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+
+                    if (lastCommit != latestCommit) {
+                        echo "New changes detected! Running pipeline..."
+                        // Additional steps to run the pipeline
+                    } else {
+                        echo "No new changes detected. Skipping pipeline run."
+                    }
+
+                    // Update the last commit ID
+                    writeFile file: 'last_commit_id.txt', text: latestCommit
+                }
+            }
+        }
+    }
+}
