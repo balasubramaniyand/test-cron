@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# GitLab repository URL (replace with your actual URL)
+repo_url="https://gitlab.com/your_username/your_repo.git"
+
+# Branch to monitor (replace with your actual branch name)
+branch_name="master"  # Adjust as needed
+
+# Jenkins pipeline job name (replace with your actual job name)
+jenkins_job_name="your_jenkins_job"
+
+# Function to check commit details for a branch
+check_commit_details() {
+  # Ensure git is installed before proceeding
+  if ! command -v git &> /dev/null; then
+    echo "Error: git is not installed. Please install git before running this script."
+    exit 1
+  fi
+
+  # Get the latest commit SHA directly from remote branch
+  latest_commit_sha=$(git ls-remote --heads "$repo_url" "refs/heads/$branch_name" | cut -d ' ' -f1)
+
+  if [[ -z "$latest_commit_sha" ]]; then
+    echo "Error: Failed to retrieve commit SHA for branch '$branch_name'."
+    exit 1
+  fi
+
+  # Optionally, cache the last SHA to avoid redundant checks (optional)
+  cached_sha_file=".last_commit_sha"
+  if [[ -f "<span class="math-inline">cached\_sha\_file" \]\]; then
+cached\_last\_sha\=</span>(cat "$cached_sha_file")
+    if [[ "$cached_last_sha" == "<span class="math-inline">latest\_commit\_sha" \]\]; then
+echo "No new commits detected \(using cached value\)\."
+return 1  \# Indicate no new commits \(using cached value\)
+fi
+fi
+\# Get the latest commit timestamp using the SHA
+latest\_commit\_time\=</span>(git log --format="%ct" "$latest_commit_sha")
+
+  # Update the cached SHA file (optional)
+  echo "$latest_commit_sha" > "<span class="math-inline">cached\_sha\_file"
+\# Track timestamps for calculating commit frequency \(potential modification\)
+\# current\_time\=</span>(date +%s)  # Get current timestamp in seconds (example)
+  # if [[ -z "$last_check_time" ]]; then
+  #   last_check_time=<span class="math-inline">current\_time
+\# fi
+\# time\_diff\=</span>((current_time - last_check_time))  # Calculate time difference (example)
+  # last_check_time=$current_time  # Update last check time (example)
+
+  echo "Branch: $branch_name"
+  echo "Latest commit SHA: $latest_commit_sha"
+  echo "Latest commit time: <span class="math-inline">latest\_commit\_time"
+\# Calculate commit frequency percentage \(potential modification\)
+\# num\_commits\=1  \# Placeholder for number of commits since last check \(example\)
+\# commit\_frequency\=</span>(echo "scale=2; ( $num_commits / $time_diff ) * 100" | bc)  # Example calculation (adjust units)
+  # echo "Commit Frequency (past $time_diff seconds): $commit_frequency%"
+
+  return 0  # Indicate new commits found
+}
+
+# Optionally, uncomment this line for an initial trigger (no caching in this case)
+# check_commit_details
+
+# Loop to check the remote repository every 10 minutes
+while true; do
+  # Check commit details and handle caching (optional)
+  if ! check_commit_details; then
+    sleep 600  # Wait 10 minutes before
+    
