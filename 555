@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# GitLab repository URL (replace with your actual URL)
+repo_url="https://pexgit.growipx.com/supportfirst/supportfirst-api-service.git"
+
+# Branch to monitor (replace with your actual branch name)
+branch_name="devops"  # Adjust as needed
+
+# Jenkins pipeline job name (replace with your actual job name)
+jenkins_job_name="email"
+
+# Function to check commit details for a branch
+check_commit_details() {
+  # Ensure git is installed before proceeding
+  if ! command -v git &> /dev/null; then
+    echo "Error: git is not installed. Please install git before running this script."
+    exit 1
+  fi
+
+  # Get the latest commit SHA directly from remote branch
+  latest_commit_sha=$(git ls-remote --heads "$repo_url" "refs/heads/$branch_name" | cut -d ' ' -f1)
+
+  if [[ -z "$latest_commit_sha" ]]; then
+    echo "Error: Failed to retrieve commit SHA for branch '$branch_name'."
+    exit 1
+  fi
+
+  # Optionally, cache the last SHA to avoid redundant checks (optional)
+  cached_sha_file=".last_commit_sha"
+  if [[ -f "$cached_sha_file" ]]; then
+    cached_last_sha=$(cat "$cached_sha_file")
+    if [[ "$cached_last_sha" == "$latest_commit_sha" ]]; then
+      echo "No new commits detected (using cached value)."
+      return 1  # Indicate no new commits (using cached value)
+    fi
+  fi
+
+  # Get the latest commit timestamp using the SHA
+  latest_commit_time=$(git log --format="%ct" "$latest_commit_sha")
+
+  # Update the cached SHA file (optional)
+  echo "$latest_commit_sha" > "$cached_sha_file"
+
+  echo "Branch: $branch_name"
+  echo "Latest commit SHA: $latest_commit_sha"
+  echo "Latest commit time: $latest_commit_time"
+
+  return 0  # Indicate new commits found
+}
+
+# Optionally, uncomment this line for an initial trigger (no caching in this case)
+# check_commit_details
+
+# Loop to check the remote repository every 10 minutes
+while true; do
+  # Check commit details and handle caching (optional)
+  if ! check_commit_details; then
+    sleep 600  # Wait 10 minutes before checking again
+    continue
+  fi
+
+  # Trigger Jenkins pipeline (adjust command based on your setup)
+  # Example using curl:
+  curl -X POST http://your_jenkins_server/job/$jenkins_job_name/build
+
+  # Sleep for 10 minutes
+  sleep 600
+done
