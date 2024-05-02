@@ -1,2 +1,11 @@
-balasubramaniyan.d@testgit:/opt$ sudo adduser --system --no-create-home --group --disabled-login sonar
-adduser: The user `sonar' already exists, but is not a system user. Exiting.
+balasubramaniyan.d@testgit:~$ sudo apt-get remove postgresql-16
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+Package 'postgresql-16' is not installed, so not removed
+The following packages were automatically installed and are no longer required:
+  libcommon-sense-perl libjson-perl libjson-xs-perl libpq5 libtypes-serialiser-perl postgresql-client-16 postgresql-client-common
+  sysstat
+Use 'sudo apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 16 not upgraded.
+balasubramaniyan.d@testgit:~$ 
